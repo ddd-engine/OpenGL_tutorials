@@ -1,8 +1,19 @@
 #version 330 core
 
 out vec3 color;
-in vec3 fragment_color;
+//in vec3 fragment_color;
+in vec3 normal;
+in vec2 fragment_uv;
+
+uniform vec3 light_direction;
+uniform sampler2D textureSampler;
+
 void main()
 {
-	color = fragment_color;
+	//color = fragment_color;
+	//color.rg = fragment_uv;
+	//color.b  = 1.0;
+	float light_contrib = abs( dot( light_direction, normal ) ); 
+	color = light_contrib * texture(textureSampler, fragment_uv).rgb;
+	
 }

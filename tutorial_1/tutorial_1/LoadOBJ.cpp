@@ -13,9 +13,10 @@
 #include <vector>
 
 bool loadOBJ( const char* path,
-			 std::vector< glm::vec3 > & out_vertices,
-			 std::vector< glm::vec2 > & out_uvs,
-			 std::vector< glm::vec3 > & out_normals
+			 std::vector< glm::vec3 >   & out_vertices,
+			 std::vector< glm::vec2 >   & out_uvs,
+			 std::vector< glm::vec3 >   & out_normals,
+			 std::vector< unsigned int> & out_indices
 			 )
 {
 	std::vector< unsigned int > vertexIndices, uvIndices, normalIndices;
@@ -73,40 +74,29 @@ bool loadOBJ( const char* path,
 				std::cout<<"This OBJ format is not supported.\n"<<std::endl;
 				return false;
 			}
-
-			vertexIndices.push_back( vertexIndex[0] );
-			vertexIndices.push_back( vertexIndex[1] );
-			vertexIndices.push_back( vertexIndex[2] );
-
-			uvIndices.push_back( uvIndex[0] );
-			uvIndices.push_back( uvIndex[1] );
-			uvIndices.push_back( uvIndex[2] );
-
-			normalIndices.push_back( normalIndex[0] );
-			normalIndices.push_back( normalIndex[1] );
-			normalIndices.push_back( normalIndex[2] );
+			
+			for( unsigned int ind_in_face = 0; ind_in_face < 3; ind_in_face++ )
+			{
+				bool found = false;
+				for(unsigned int i = 0 ; i < out_vertices.size(); i++ )
+				{
+					if( out_vertices[i] == temp_vertices[vertexIndex[ind_in_face]-1] &&
+						out_uvs[i]      == temp_uvs[uvIndex[ind_in_face]-1]          &&
+						out_normals[i]  == temp_normals[normalIndex[ind_in_face]-1] )
+					{
+						out_indices.push_back(i);
+						found = true;
+					}
+				}
+				if( !found )
+				{
+					out_vertices.push_back( temp_vertices[vertexIndex[ind_in_face]-1] );
+					out_uvs.push_back( temp_uvs[uvIndex[ind_in_face]-1] );
+					out_normals.push_back( temp_normals[normalIndex[ind_in_face]-1]);
+					out_indices.push_back(out_vertices.size()-1);
+				}
+			}
 		}
 	}
-	for( unsigned int i=0; i<vertexIndices.size(); i++)
-	{
-		unsigned int vertexIndex = vertexIndices[i];
-		glm::vec3 vertex = temp_vertices[vertexIndex - 1];
-		out_vertices.push_back(vertex);
-	}
-
-	for( unsigned int i=0; i<uvIndices.size(); i++)
-	{
-		unsigned int uvIndex = uvIndices[i];
-		glm::vec2 uv = temp_uvs[uvIndex - 1];
-		out_uvs.push_back(uv);
-	}
-
-	for( unsigned int i=0; i<normalIndices.size(); i++)
-	{
-		unsigned int normalIndex = normalIndices[i];
-		glm::vec3 normal = temp_normals[normalIndex - 1];
-		out_normals.push_back(normal);
-	}
-
 	return true;
 }

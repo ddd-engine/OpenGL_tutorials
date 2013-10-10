@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <string>
+#include <vector>
 
 // Include GLEW
 #include <GL/glew.h>
@@ -13,6 +14,9 @@
 #include <glm/ext.hpp>
 
 #include "loadShader.h"
+#include "loadBMP.h"
+#include "loadOBJ.h"
+#include "controls.h"
 
 using namespace glm;
 
@@ -97,10 +101,52 @@ static const GLfloat g_color_buffer_data[] = {
     0.982f,  0.099f,  0.879f
 };
 
+// Two UV coordinatesfor each vertex. They were created with Blender. You'll learn shortly how to do this yourself.
+static const GLfloat g_uv_buffer_data[] = {
+    0.000059f, 1.0f-0.000004f,
+    0.000103f, 1.0f-0.336048f,
+    0.335973f, 1.0f-0.335903f,
+    1.000023f, 1.0f-0.000013f,
+    0.667979f, 1.0f-0.335851f,
+    0.999958f, 1.0f-0.336064f,
+    0.667979f, 1.0f-0.335851f,
+    0.336024f, 1.0f-0.671877f,
+    0.667969f, 1.0f-0.671889f,
+    1.000023f, 1.0f-0.000013f,
+    0.668104f, 1.0f-0.000013f,
+    0.667979f, 1.0f-0.335851f,
+    0.000059f, 1.0f-0.000004f,
+    0.335973f, 1.0f-0.335903f,
+    0.336098f, 1.0f-0.000071f,
+    0.667979f, 1.0f-0.335851f,
+    0.335973f, 1.0f-0.335903f,
+    0.336024f, 1.0f-0.671877f,
+    1.000004f, 1.0f-0.671847f,
+    0.999958f, 1.0f-0.336064f,
+    0.667979f, 1.0f-0.335851f,
+    0.668104f, 1.0f-0.000013f,
+    0.335973f, 1.0f-0.335903f,
+    0.667979f, 1.0f-0.335851f,
+    0.335973f, 1.0f-0.335903f,
+    0.668104f, 1.0f-0.000013f,
+    0.336098f, 1.0f-0.000071f,
+    0.000103f, 1.0f-0.336048f,
+    0.000004f, 1.0f-0.671870f,
+    0.336024f, 1.0f-0.671877f,
+    0.000103f, 1.0f-0.336048f,
+    0.336024f, 1.0f-0.671877f,
+    0.335973f, 1.0f-0.335903f,
+    0.667969f, 1.0f-0.671889f,
+    1.000004f, 1.0f-0.671847f,
+    0.667979f, 1.0f-0.335851f
+};
+
 int main( void )
 {
 	GLuint vertex_buffer;
 	GLuint color_buffer;
+	GLuint texture_buffer;
+	GLuint indices_buffer;
 
 	// Initialise GLFW
 	if( !glfwInit() )
@@ -138,50 +184,96 @@ int main( void )
 	glGenVertexArrays(1, &vertex_array_id);
 	glBindVertexArray(vertex_array_id);
 
+	std::vector<glm::vec3> vertices;
+	std::vector<glm::vec2> uvs;
+	std::vector<glm::vec3> normals;
+	std::vector<unsigned int> indices;
+	bool res = loadOBJ("cube.obj", vertices, uvs, normals, indices);
+
 	glGenBuffers(1, &vertex_buffer);
 	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data),g_vertex_buffer_data, GL_STATIC_DRAW);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data),g_vertex_buffer_data, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * vertices.size() , &vertices[0], GL_STATIC_DRAW);
 
 	glGenBuffers(1, &color_buffer);
 	glBindBuffer(GL_ARRAY_BUFFER, color_buffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(g_color_buffer_data),g_color_buffer_data, GL_STATIC_DRAW);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(g_color_buffer_data),g_color_buffer_data, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * normals.size(), &normals[0], GL_STATIC_DRAW);
+
+	glGenBuffers(1, &texture_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, texture_buffer);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(g_uv_buffer_data), g_uv_buffer_data, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * uvs.size(), &uvs[0], GL_STATIC_DRAW);
+
+	glGenBuffers(1, &indices_buffer);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indices_buffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices.size(), &indices[0], GL_STATIC_DRAW);
 
 	// Dark blue background
 	glClearColor(0.4f, 0.0f, 0.4f, 0.0f);
 
 	// Create and compile our GLSL program from the shaders
 	GLuint program_id = LoadShaders( "vertex_shader.vsc", "fragment_shader.fsc" );
-	
+	//GLuint texture_id = LoadBMP_custom( "uvtemplate.bmp" );
+	//GLuint texture_id = LoadTGA_glfw( "uvtemplate.tga" );
+	//GLuint texture_id = LoadDDS( "uvtemplate.DDS" );
+	GLuint texture_id = LoadDDS( "uvmap.DDS" );
+	GLint  texture_sampler_id = glGetUniformLocation( program_id, "textureSampler");
+	GLint  light_direction_id = glGetUniformLocation( program_id, "light_direction"); 
+
 	//Projection matrix of 45 degres 4:3 aspect ration 0.1 near plane 100 far plane
-	glm::mat4 projection = glm::perspective(45.0f, 4.0f/3.0f, 0.1f, 100.0f);
+	//glm::mat4 projection = glm::perspective(45.0f, 4.0f/3.0f, 0.1f, 100.0f);
 	//Camera matrix
-	glm::mat4 view = glm::lookAt(
-								  glm::vec3( 4, 3, -3 ),
-								  glm::vec3( 0, 0, 0 ),
-								  glm::vec3( 0, 1, 0 )
-					 );
+	//glm::mat4 view = glm::lookAt( glm::vec3( 4, 3, -3 ),
+	//							  glm::vec3( 0, 0, 0 ),
+	//							  glm::vec3( 0, 1, 0 )
+	//				 );
 	//Model matrix
 	glm::mat4 model = glm::mat4(1.0f);
-	
-	// Model-view-projection matrix
-	glm::mat4 mvp = projection * view * model;
+	glm::mat4 mvp;
 	GLuint mvp_id = glGetUniformLocation( program_id, "mvp" );
 	
-	GLint vertex_buffer_location = glGetAttribLocation( program_id, "vertex_position_modelspace");
-	GLint color_buffer_location = glGetAttribLocation( program_id, "vertex_color");
-	std::cout<<"Vertex buffer location: "<< vertex_buffer_location << std::endl;
-	std::cout<<"Color buffer location: "<< vertex_buffer_location << std::endl;
+	GLint vertex_buffer_location  = glGetAttribLocation( program_id, "vertex_position_modelspace");
+	GLint color_buffer_location   = glGetAttribLocation( program_id, "vertex_color");
+	GLint texture_buffer_location = glGetAttribLocation( program_id, "vertex_uv");
+	
+	std::cout<<"Vertex buffer location: "  << vertex_buffer_location  << std::endl;
+	std::cout<<"Color buffer location: "   << vertex_buffer_location  << std::endl;
+	std::cout<<"Texture buffer location: " << texture_buffer_location << std::endl;
+	std::cout<<"Texture sampler location: "<< texture_sampler_id      << std::endl;
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
+	glEnable(GL_TEXTURE_2D);
+	// Cull triangles which normal is not towards the camera
+	glEnable(GL_CULL_FACE);
+	
+	//Need to reset the mouse otherwise we start from a different position
+	//because the update code will use the current position as soon as we start.
+	int width, height;
+	glfwGetWindowSize( &width, &height );
+	glfwSetMousePos( width/2, height/2 );
+
 	do{
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 		
 		glUseProgram( program_id );		
 
+		// Model-view-projection matrix
+		computeMatricesFromInputs( );
+
+		mvp  = getProjectionMatrix() * getViewMatrix() * model;
+
 		glUniformMatrix4fv( mvp_id, 1, GL_FALSE, &mvp[0][0] );
-		glEnableVertexAttribArray(vertex_buffer_location);
+		glm::vec3 light_dir = glm::normalize(getCameraDirection());
+		glUniform3fv( light_direction_id, 1, &(light_dir)[0] );
+		
+		glActiveTexture(GL_TEXTURE0);				   //Activate sampler unit 0
+		glBindTexture(GL_TEXTURE_2D, texture_id);      //Bind the texture to it
+		glUniform1i(texture_sampler_id, 0);            //Indicate the shader to use that sampler
+	
+		glEnableVertexAttribArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-		glVertexAttribPointer( vertex_buffer_location, // Vertex Attrib Array enabled
+		glVertexAttribPointer( 0, // Vertex Attrib Array enabled
 							   3,					   // Number of elements that form an input in the shader (ex. 3 if shader has vec3 input)
 							   GL_FLOAT,			   // Size of elements
 							   GL_FALSE,			   // normalized
@@ -189,9 +281,9 @@ int main( void )
 							   0					   // Offset in the array
 							 );
 
-		glEnableVertexAttribArray(color_buffer_location);
+		glEnableVertexAttribArray(1);
 		glBindBuffer(GL_ARRAY_BUFFER, color_buffer);
-		glVertexAttribPointer( color_buffer_location, // Vertex Attrib Array enabled
+		glVertexAttribPointer( 1, // Vertex Attrib Array enabled
 							   3,					   // Number of elements that form an input in the shader (ex. 3 if shader has vec3 input)
 							   GL_FLOAT,			   // Size of elements
 							   GL_FALSE,			   // normalized
@@ -199,8 +291,22 @@ int main( void )
 							   0					   // Offset in the array
 							 );
 
-		glDrawArrays(GL_TRIANGLES, 0, 12*3);
-		glDisableVertexAttribArray(0);
+		glEnableVertexAttribArray(2);
+		glBindBuffer(GL_ARRAY_BUFFER,texture_buffer);
+		glVertexAttribPointer( 2,
+							   2,
+							   GL_FLOAT,
+							   GL_FALSE,
+							   0,
+							   0
+							 );
+
+		glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, indices_buffer );
+		glDrawElements( GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, (void*)0);
+		//glDrawArrays(GL_TRIANGLES, 0, 12*3);
+		glDisableVertexAttribArray(vertex_buffer_location);
+		glDisableVertexAttribArray(color_buffer_location);
+		glDisableVertexAttribArray(texture_buffer_location);
 
 		// Swap buffers
 		glfwSwapBuffers();

@@ -181,6 +181,18 @@
 				Name="common"
 				>
 				<File
+					RelativePath=".\controls.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\loadBMP.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\LoadOBJ.cpp"
+					>
+				</File>
+				<File
 					RelativePath=".\loadShader.cpp"
 					>
 				</File>
@@ -191,13 +203,25 @@
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
-			<File
-				RelativePath=".\loadShader.h"
-				>
-			</File>
 			<Filter
 				Name="common"
 				>
+				<File
+					RelativePath=".\controls.h"
+					>
+				</File>
+				<File
+					RelativePath=".\loadBMP.h"
+					>
+				</File>
+				<File
+					RelativePath=".\LoadOBJ.h"
+					>
+				</File>
+				<File
+					RelativePath=".\loadShader.h"
+					>
+				</File>
 			</Filter>
 		</Filter>
 		<Filter
@@ -216,6 +240,30 @@
 					RelativePath=".\vertex_shader.vsc"
 					>
 				</File>
+			</Filter>
+			<Filter
+				Name="Textures"
+				>
+				<File
+					RelativePath=".\uvmap.DDS"
+					>
+				</File>
+				<File
+					RelativePath=".\uvtemplate.bmp"
+					>
+				</File>
+				<File
+					RelativePath=".\uvtemplate.DDS"
+					>
+				</File>
+				<File
+					RelativePath=".\uvtemplate.tga"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="Meshes"
+				>
 			</Filter>
 		</Filter>
 	</Files>
