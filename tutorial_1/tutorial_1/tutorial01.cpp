@@ -17,7 +17,7 @@
 #include "loadBMP.h"
 #include "loadOBJ.h"
 #include "controls.h"
-
+#include "text2D.hpp"
 using namespace glm;
 
 // Our vertices. Tree consecutive floats give a 3D vertex; Three consecutive vertices give a triangle.
@@ -188,7 +188,8 @@ int main( void )
 	std::vector<glm::vec2> uvs;
 	std::vector<glm::vec3> normals;
 	std::vector<unsigned int> indices;
-	bool res = loadOBJ("cube.obj", vertices, uvs, normals, indices);
+	//bool res = loadOBJ("cube.obj", vertices, uvs, normals, indices);
+	bool res = loadOBJ("suzanne.obj", vertices, uvs, normals, indices);
 
 	glGenBuffers(1, &vertex_buffer);
 	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
@@ -217,7 +218,7 @@ int main( void )
 	//GLuint texture_id = LoadBMP_custom( "uvtemplate.bmp" );
 	//GLuint texture_id = LoadTGA_glfw( "uvtemplate.tga" );
 	//GLuint texture_id = LoadDDS( "uvtemplate.DDS" );
-	GLuint texture_id = LoadDDS( "uvmap.DDS" );
+	GLuint texture_id = LoadDDS( "uvmap_suzanne.DDS" );
 	GLint  texture_sampler_id = glGetUniformLocation( program_id, "textureSampler");
 	GLint  light_direction_id = glGetUniformLocation( program_id, "light_direction"); 
 
@@ -244,6 +245,9 @@ int main( void )
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	glEnable(GL_TEXTURE_2D);
+	// Enable blending
+	//glEnable(GL_BLEND);
+	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	// Cull triangles which normal is not towards the camera
 	glEnable(GL_CULL_FACE);
 	
@@ -252,6 +256,9 @@ int main( void )
 	int width, height;
 	glfwGetWindowSize( &width, &height );
 	glfwSetMousePos( width/2, height/2 );
+
+
+	initText2D("Holstein.tga");
 
 	do{
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -308,6 +315,7 @@ int main( void )
 		glDisableVertexAttribArray(color_buffer_location);
 		glDisableVertexAttribArray(texture_buffer_location);
 
+		printText2D("Bravo Maccio!", 400,300, 20);
 		// Swap buffers
 		glfwSwapBuffers();
 
