@@ -18,7 +18,10 @@
 #include "loadOBJ.h"
 #include "controls.h"
 #include "text2D.hpp"
+#include "utils.h"
 using namespace glm;
+
+#define DEBUG 1
 
 // Our vertices. Tree consecutive floats give a 3D vertex; Three consecutive vertices give a triangle.
 // A cube has 6 faces with 2 triangles each, so this makes 6*2=12 triangles, and 12*3 vertices
@@ -144,9 +147,11 @@ static const GLfloat g_uv_buffer_data[] = {
 int main( void )
 {
 	GLuint vertex_buffer;
-	GLuint color_buffer;
+	GLuint normal_buffer;
 	GLuint texture_buffer;
 	GLuint indices_buffer;
+	GLuint tangents_buffer;
+	GLuint bitangents_buffer;
 
 	// Initialise GLFW
 	if( !glfwInit() )
@@ -158,7 +163,12 @@ int main( void )
 	glfwOpenWindowHint(GLFW_FSAA_SAMPLES, 4);
 	glfwOpenWindowHint(GLFW_OPENGL_VERSION_MAJOR, 3);
 	glfwOpenWindowHint(GLFW_OPENGL_VERSION_MINOR, 3);
+
+#if DEBUG
+	glfwOpenWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
+#else
 	glfwOpenWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#endif
 
 	// Open a window and create its OpenGL context
 	if( !glfwOpenWindow( 1024, 768, 0,0,0,0, 32,0, GLFW_WINDOW ) )
@@ -187,25 +197,32 @@ int main( void )
 	std::vector<glm::vec3> vertices;
 	std::vector<glm::vec2> uvs;
 	std::vector<glm::vec3> normals;
+	std::vector<glm::vec3> tangents;
+	std::vector<glm::vec3> bitangents;
 	std::vector<unsigned int> indices;
 	//bool res = loadOBJ("cube.obj", vertices, uvs, normals, indices);
-	bool res = loadOBJ("suzanne.obj", vertices, uvs, normals, indices);
+	bool res = loadOBJ("cylinder.obj", vertices, uvs, normals, indices, tangents, bitangents);
 
 	glGenBuffers(1, &vertex_buffer);
 	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-	//glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data),g_vertex_buffer_data, GL_STATIC_DRAW);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * vertices.size() , &vertices[0], GL_STATIC_DRAW);
 
-	glGenBuffers(1, &color_buffer);
-	glBindBuffer(GL_ARRAY_BUFFER, color_buffer);
-	//glBufferData(GL_ARRAY_BUFFER, sizeof(g_color_buffer_data),g_color_buffer_data, GL_STATIC_DRAW);
+	glGenBuffers(1, &normal_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, normal_buffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * normals.size(), &normals[0], GL_STATIC_DRAW);
 
 	glGenBuffers(1, &texture_buffer);
 	glBindBuffer(GL_ARRAY_BUFFER, texture_buffer);
-	//glBufferData(GL_ARRAY_BUFFER, sizeof(g_uv_buffer_data), g_uv_buffer_data, GL_STATIC_DRAW);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * uvs.size(), &uvs[0], GL_STATIC_DRAW);
+	
+	glGenBuffers(1, &tangents_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, tangents_buffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * tangents.size(), &tangents[0], GL_STATIC_DRAW);
 
+	glGenBuffers(1, &bitangents_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, bitangents_buffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * bitangents.size(), &bitangents[0], GL_STATIC_DRAW);
+	
 	glGenBuffers(1, &indices_buffer);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indices_buffer);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices.size(), &indices[0], GL_STATIC_DRAW);
@@ -218,9 +235,14 @@ int main( void )
 	//GLuint texture_id = LoadBMP_custom( "uvtemplate.bmp" );
 	//GLuint texture_id = LoadTGA_glfw( "uvtemplate.tga" );
 	//GLuint texture_id = LoadDDS( "uvtemplate.DDS" );
-	GLuint texture_id = LoadDDS( "uvmap_suzanne.DDS" );
+	
+	GLuint texture_id = LoadDDS( "diffuse.DDS" );
 	GLint  texture_sampler_id = glGetUniformLocation( program_id, "textureSampler");
 	GLint  light_direction_id = glGetUniformLocation( program_id, "light_direction"); 
+
+	GLuint normal_map_id = LoadTGA_glfw("normal.tga");
+	GLint  normal_sampler_id = glGetUniformLocation(program_id, "normalSampler");
+	GLuint ModelView3x3MatrixID = glGetUniformLocation(program_id, "MV3x3");
 
 	//Projection matrix of 45 degres 4:3 aspect ration 0.1 near plane 100 far plane
 	//glm::mat4 projection = glm::perspective(45.0f, 4.0f/3.0f, 0.1f, 100.0f);
@@ -235,21 +257,24 @@ int main( void )
 	GLuint mvp_id = glGetUniformLocation( program_id, "mvp" );
 	
 	GLint vertex_buffer_location  = glGetAttribLocation( program_id, "vertex_position_modelspace");
-	GLint color_buffer_location   = glGetAttribLocation( program_id, "vertex_color");
 	GLint texture_buffer_location = glGetAttribLocation( program_id, "vertex_uv");
 	
 	std::cout<<"Vertex buffer location: "  << vertex_buffer_location  << std::endl;
 	std::cout<<"Color buffer location: "   << vertex_buffer_location  << std::endl;
 	std::cout<<"Texture buffer location: " << texture_buffer_location << std::endl;
 	std::cout<<"Texture sampler location: "<< texture_sampler_id      << std::endl;
+	
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
+
 	glEnable(GL_TEXTURE_2D);
+	
 	// Enable blending
 	//glEnable(GL_BLEND);
 	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	
 	// Cull triangles which normal is not towards the camera
-	glEnable(GL_CULL_FACE);
+	//glEnable(GL_CULL_FACE);
 	
 	//Need to reset the mouse otherwise we start from a different position
 	//because the update code will use the current position as soon as we start.
@@ -257,27 +282,34 @@ int main( void )
 	glfwGetWindowSize( &width, &height );
 	glfwSetMousePos( width/2, height/2 );
 
-
-	initText2D("Holstein.tga");
+	//initText2D("Holstein.tga");
 
 	do{
 		glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 		
-		glUseProgram( program_id );		
+		glUseProgram( program_id );	
 
 		// Model-view-projection matrix
 		computeMatricesFromInputs( );
 
 		mvp  = getProjectionMatrix() * getViewMatrix() * model;
+		glm::mat4 ModelViewMatrix = getViewMatrix() * model;
+		glm::mat3 ModelView3x3Matrix = glm::mat3(ModelViewMatrix);
 
 		glUniformMatrix4fv( mvp_id, 1, GL_FALSE, &mvp[0][0] );
-		glm::vec3 light_dir = glm::normalize(getCameraDirection());
+		//glm::vec3 light_dir = glm::normalize(getCameraDirection());
+		glm::vec3 light_dir = glm::vec3(0,0,4);
 		glUniform3fv( light_direction_id, 1, &(light_dir)[0] );
+		glUniformMatrix3fv( ModelView3x3MatrixID, 1, GL_FALSE, &ModelView3x3Matrix[0][0] );
 		
 		glActiveTexture(GL_TEXTURE0);				   //Activate sampler unit 0
 		glBindTexture(GL_TEXTURE_2D, texture_id);      //Bind the texture to it
 		glUniform1i(texture_sampler_id, 0);            //Indicate the shader to use that sampler
 	
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, normal_map_id);
+		glUniform1i(normal_sampler_id, 1);
+
 		glEnableVertexAttribArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
 		glVertexAttribPointer( 0, // Vertex Attrib Array enabled
@@ -289,7 +321,7 @@ int main( void )
 							 );
 
 		glEnableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, color_buffer);
+		glBindBuffer(GL_ARRAY_BUFFER, normal_buffer);
 		glVertexAttribPointer( 1, // Vertex Attrib Array enabled
 							   3,					   // Number of elements that form an input in the shader (ex. 3 if shader has vec3 input)
 							   GL_FLOAT,			   // Size of elements
@@ -299,7 +331,7 @@ int main( void )
 							 );
 
 		glEnableVertexAttribArray(2);
-		glBindBuffer(GL_ARRAY_BUFFER,texture_buffer);
+		glBindBuffer(GL_ARRAY_BUFFER, texture_buffer);
 		glVertexAttribPointer( 2,
 							   2,
 							   GL_FLOAT,
@@ -308,16 +340,42 @@ int main( void )
 							   0
 							 );
 
-		glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, indices_buffer );
-		glDrawElements( GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, (void*)0);
-		//glDrawArrays(GL_TRIANGLES, 0, 12*3);
-		glDisableVertexAttribArray(vertex_buffer_location);
-		glDisableVertexAttribArray(color_buffer_location);
-		glDisableVertexAttribArray(texture_buffer_location);
+		glEnableVertexAttribArray(3);
+		glBindBuffer(GL_ARRAY_BUFFER,tangents_buffer);
+		glVertexAttribPointer( 3,
+							   3,
+							   GL_FLOAT,
+							   GL_FALSE,
+							   0,
+							   0
+							 );
 
-		printText2D("Bravo Maccio!", 400,300, 20);
+		glEnableVertexAttribArray(4);
+		glBindBuffer(GL_ARRAY_BUFFER,bitangents_buffer);
+		glVertexAttribPointer( 4,
+							   3,
+							   GL_FLOAT,
+							   GL_FALSE,
+							   0,
+							   0
+							 );
+
+		glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, indices_buffer );
+		glDrawElements( GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, (void*)0);		
+	
+		glDisableVertexAttribArray(0); //Positions
+		glDisableVertexAttribArray(1); //Normals
+		glDisableVertexAttribArray(2); //UVs
+		glDisableVertexAttribArray(3); //Tangents
+		glDisableVertexAttribArray(4); //Bitangents
+		//printText2D("Bravo Maccio!", 400,300, 20);
+		
+		drawTangentSpace(getProjectionMatrix(), getViewMatrix(), model,vertices,normals,tangents,bitangents);
+		
 		// Swap buffers
 		glfwSwapBuffers();
+		
+	
 
 	} // Check if the ESC key was pressed or the window was closed
 	while( glfwGetKey( GLFW_KEY_ESC ) != GLFW_PRESS &&

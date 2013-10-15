@@ -1,21 +1,33 @@
 #version 330 core
 
+//inputs
 layout (location = 0) in vec3 vertex_position_modelspace;
-//layout (location = 1)in vec3 vertex_color;
-layout (location = 1)in vec3 vertex_normal;
+layout (location = 1)in vec3 vertex_normal_modelspace;
 layout (location = 2)in vec2 vertex_uv;
+layout (location = 3)in vec3 vertex_tangent_modelspace;
+layout (location = 4)in vec3 vertex_bitangent_modelspace;
+
+//uniforms
 uniform mat4 mvp;
+uniform mat3 MV3x3;
+uniform vec3 light_direction;
 
-out vec3 normal;
+//outputs
 out vec2 fragment_uv;
-
+out vec3 light_direction_tangentspace;
 
 void main()
 {
+	vec3 vertexNormal_cameraspace    = MV3x3 * normalize(vertex_normal_modelspace);
+	vec3 vertexTangent_cameraspace   = MV3x3 * normalize(vertex_tangent_modelspace);
+	vec3 vertexBitangent_cameraspace = MV3x3 * normalize(vertex_bitangent_modelspace);
+	
 	vec4 v = vec4( vertex_position_modelspace, 1.0f );
 	gl_Position = mvp*v;
-	normal = vertex_normal;
-	fragment_uv.r = vertex_uv.r;
-	fragment_uv.g = 1 - vertex_uv.g;
-	//fragment_uv = vertex_uv;
+	
+	mat3 TBN = transpose(mat3(vertexNormal_cameraspace,
+						 vertexTangent_cameraspace,
+						 vertexBitangent_cameraspace));
+	light_direction_tangentspace = TBN * light_direction;
+	fragment_uv = vertex_uv;
 }

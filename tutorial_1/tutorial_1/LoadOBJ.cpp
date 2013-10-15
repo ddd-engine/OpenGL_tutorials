@@ -12,11 +12,15 @@
 #include <fstream>
 #include <vector>
 
+#include "utils.h"
+
 bool loadOBJ( const char* path,
 			 std::vector< glm::vec3 >   & out_vertices,
 			 std::vector< glm::vec2 >   & out_uvs,
 			 std::vector< glm::vec3 >   & out_normals,
-			 std::vector< unsigned int> & out_indices
+			 std::vector< unsigned int> & out_indices,
+			 std::vector< glm::vec3 >   & out_tangents,
+			 std::vector< glm::vec3 >   & out_bitangents
 			 )
 {
 	std::vector< unsigned int > vertexIndices, uvIndices, normalIndices;
@@ -63,7 +67,9 @@ bool loadOBJ( const char* path,
 		}
 		else if( strcmp( lineHeader, "f" ) == 0 )
 		{
-			unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
+			std::vector<unsigned int> vertexIndex(3);
+			std::vector<unsigned int> uvIndex(3);
+			std::vector<unsigned int> normalIndex(3);
 			
 			int matches = fscanf( file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", 
 								  &vertexIndex[0], &uvIndex[0], &normalIndex[0],
@@ -74,6 +80,9 @@ bool loadOBJ( const char* path,
 				std::cout<<"This OBJ format is not supported.\n"<<std::endl;
 				return false;
 			}
+
+			glm::vec3 temp_bitangent, temp_tangent;
+			computeTangentBasis(temp_vertices, vertexIndex, temp_uvs, uvIndex, temp_normals, normalIndex,temp_tangent, temp_bitangent);
 			
 			for( unsigned int ind_in_face = 0; ind_in_face < 3; ind_in_face++ )
 			{
@@ -85,6 +94,8 @@ bool loadOBJ( const char* path,
 						out_normals[i]  == temp_normals[normalIndex[ind_in_face]-1] )
 					{
 						out_indices.push_back(i);
+						out_tangents[i]   += temp_tangent;
+						out_bitangents[i] += temp_bitangent;
 						found = true;
 					}
 				}
@@ -94,6 +105,8 @@ bool loadOBJ( const char* path,
 					out_uvs.push_back( temp_uvs[uvIndex[ind_in_face]-1] );
 					out_normals.push_back( temp_normals[normalIndex[ind_in_face]-1]);
 					out_indices.push_back(out_vertices.size()-1);
+					out_tangents.push_back(temp_tangent);
+					out_bitangents.push_back(temp_bitangent);
 				}
 			}
 		}
